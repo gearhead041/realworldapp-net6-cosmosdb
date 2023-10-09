@@ -4,8 +4,8 @@ namespace Contracts.Services;
 
 public interface IUserService
 {
-    Task<UserDto> AuthenticateUser(UserForAuthDto userForAuth);
-    Task<UserDto> CreateUser(CreateUserDto userCreate);
+    Task<(bool, UserDto)> AuthenticateUser(UserForAuthDto userForAuth);
+    Task<(bool,UserDto)> CreateUser(CreateUserDto userCreate);
     Task<UserDto> GetUser(string userId);
     Task<UserDto> UpdateUser(UserDto user);
     Task<ProfileDto> GetProfile(string userName);
