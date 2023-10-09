@@ -3,8 +3,12 @@ using Contracts.Repository;
 using Contracts.Services;
 using Entities.Dtos;
 using Entities.Models;
+using System.Security.Claims;
 using System.Text;
 using XSystem.Security.Cryptography;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using XAct;
 
 namespace Services;
 
@@ -40,25 +44,42 @@ internal class UserService : IUserService
     }
 
 
-    public async Task<(bool,UserDto)> AuthenticateUser(UserForAuthDto userForAuth)
+    public async Task<(bool, UserDto)> AuthenticateUser(UserForAuthDto userForAuth)
     {
         var user = await repositoryManager.UserRepository.GetUser(userForAuth.Email, false, null);
-        if(user == null)
-            return (false,null);
+        if (user == null)
+            return (false, null);
         var result = Verify(userForAuth.Password, user.PasswordHash);
         var userWithToken = mapper.Map<UserDto>(user);
-        userWithToken.Token = GenerateToken();
+        userWithToken.Token = GenerateToken(userForAuth);
         return (result, mapper.Map<UserDto>(user));
     }
 
-    private string GenerateToken()
+    private string GenerateToken(UserForAuthDto user)
     {
-        throw new NotImplementedException();
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Email, user.Email),
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your-secret-key"));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: "your-issuer",
+            audience: "your-audience",
+            claims: claims,
+            expires: DateTime.Now.AddMinutes(30), // Set token expiration
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+
     }
 
-    public async Task<(bool,UserDto)> CreateUser(CreateUserDto userCreate)
+    public async Task<(bool, UserDto)> CreateUser(CreateUserDto userCreate)
     {
-        var userInDb = await repositoryManager.UserRepository.GetUser(userCreate.Email,false,null);
+        var userInDb = await repositoryManager.UserRepository.GetUser(userCreate.Email, false, null);
         if (userInDb != null)
             return (false, null);
         var user = mapper.Map<User>(userCreate);
@@ -67,18 +88,44 @@ internal class UserService : IUserService
         return (true, mapper.Map<UserDto>(user));
     }
 
-    public async Task<UserDto> GetUser(string email)
+    public static string GetEmailFromToken(string jwtToken)
     {
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.ReadJwtToken(jwtToken);
+
+        // Find the claim by type
+        var claim = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
+
+        if (claim != null)
+        {
+            return claim.Value;
+        }
+
+        return null;
+    }
+
+    public async Task<UserDto> GetUser(string token)
+    {
+        var email = GetEmailFromToken(token);
+        if (email.IsNull())
+            return null;
+
         var user = await repositoryManager.UserRepository.GetUser(email, false, null);
         if (user == null)
             return null;
         return mapper.Map<UserDto>(user);
     }
 
-    public Task<UserDto> UpdateUser(UserDto user)
+    public async Task<UserDto> UpdateUser(UserDto userUpdate)
     {
-        throw new NotImplementedException();
+        var user = await repositoryManager.UserRepository.GetUser(userUpdate.Email, true, null);
+        if (user.IsNull())
+            return null;
+        mapper.Map(userUpdate, user);
+        await repositoryManager.Save();
+        return userUpdate;
     }
+
     public Task<ProfileDto> FollowUser(string userName, string userToFollow)
     {
         throw new NotImplementedException();

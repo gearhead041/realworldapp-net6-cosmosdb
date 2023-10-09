@@ -43,13 +43,20 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
-
+        string token = HttpContext.Request.Headers["Authorization"];
+        var user = await serviceManager.UserService.GetUser(token);
+        if (user.IsNull())
+            return NotFound(user);
+        return Ok( new { user });
     }
 
     [Authorize]
     [HttpPut]
-    public async Task<ActionResult<UserDto>> UpdateUser([FromBody] UserDto user)
+    public async Task<ActionResult<UserDto>> UpdateUser([FromBody] UserDto userUpdate)
     {
-
+        var user = await serviceManager.UserService.UpdateUser(userUpdate);
+        if (user.IsNull())
+            return BadRequest("User Not Found");
+        return Ok(new { user });
     }
 }
