@@ -12,7 +12,7 @@ public class MappingProfiles : Profile
         CreateMap<Article,ArticleDto>().ReverseMap();
         CreateMap<Comment, CommentDto>().ReverseMap();
         CreateMap<UserDto, User>().ReverseMap()
-            .ForMember(u => u.Token, opt => opt.Ignore())
-            ;
+            .ForMember(u => u.Token, opt => opt.Ignore());
+        CreateMap<CreateUserDto, User>().ReverseMap();
     }
 }

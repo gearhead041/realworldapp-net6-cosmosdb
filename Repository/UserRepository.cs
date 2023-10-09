@@ -1,17 +1,14 @@
 ﻿using Contracts.Repository;
 using Entities.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace Repository;
 
 public class UserRepository: RepositoryBase<User>, IUserRepository
 {
-    private RepositoryContext context;
 
     public UserRepository(RepositoryContext context) : base(context)
     {
-        this.context = context;
     }
 
     public void CreateUser(User user)
@@ -24,8 +21,10 @@ public class UserRepository: RepositoryBase<User>, IUserRepository
         => GetAll(trackChanges,include);
 
     public async Task<User> GetUser(string email, bool trackchanges, string? include)
-        => await FindByCondition(u => u.UserName == username, trackchanges, include).SingleOrDefaultAsync();
-;
+        => await FindByCondition(u => u.Email == email, trackchanges, include).SingleOrDefaultAsync();
+
+    public async Task<User> GetUserByName(string name, bool trackchanges, string? include)
+        => await FindByCondition(u => u.UserName == name, trackchanges, null).SingleOrDefaultAsync();
     public void UpdateUser(User user)
         => Update(user);
 }

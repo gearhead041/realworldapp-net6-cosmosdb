@@ -22,9 +22,9 @@ public class UsersController : ControllerBase
     {
 
         (bool result, UserDto userReturn) = await serviceManager.UserService.AuthenticateUser(userForAuth);
-        if (!result)
+        if (result == false)
             return Unauthorized("Wrong password");
-        if (userReturn.IsNull())
+        if (userReturn == null)
             return NotFound("User with email not found");
         return Ok(new { user = userReturn });
 
@@ -45,7 +45,7 @@ public class UsersController : ControllerBase
     {
         string token = HttpContext.Request.Headers["Authorization"];
         var user = await serviceManager.UserService.GetUser(token);
-        if (user.IsNull())
+        if (user == null)
             return NotFound(user);
         return Ok( new { user });
     }

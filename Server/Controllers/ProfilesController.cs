@@ -1,6 +1,5 @@
 ﻿using Contracts.Services;
 using Entities.Dtos;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Server.Controllers;
@@ -16,21 +15,38 @@ public class ProfilesController : ControllerBase
         this.serviceManager = serviceManager;
     }
 
-    [HttpGet("{userName:string}")]
+    [HttpGet("{userName}")]
     public async Task<ActionResult<ProfileDto>> GetProfile(string userName)
     {
-
+        var profile = await serviceManager.UserService.GetProfile(userName);
+        if (profile == null)
+            return NotFound("User not found");
+        return Ok(new { profile });
     }
 
-    [HttpPost("{userName:string}/follow")]
+    [HttpPost("{userName}/follow")]
     public async Task<ActionResult<ProfileDto>> FollowUser(string userName)
     {
-
+        string token = HttpContext.Request.Headers["Authorization"];
+        var user = await serviceManager.UserService.GetUser(token);
+        if (user == null)
+            return Unauthorized();
+        var profile = await serviceManager.UserService.FollowUser(user.UserName, userName);
+        if (profile == null)
+            return NotFound("User not found");
+        return Ok(new { profile });
     }
 
-    [HttpDelete("{userName:string}/unfollow")]
+    [HttpDelete("{userName}/unfollow")]
     public async Task<ActionResult<ProfileDto>> UnfollowUser(string userName)
     {
-
+        string token = HttpContext.Request.Headers["Authorization"];
+        var user = await serviceManager.UserService.GetUser(token);
+        if (user == null)
+            return Unauthorized();
+        var profile = await serviceManager.UserService.UnfollowUser(user.UserName, userName);
+        if (profile == null)
+            return NotFound("User not found");
+        return Ok(new { profile });
     }
 }

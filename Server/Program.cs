@@ -22,7 +22,7 @@ builder.Services.AddDbContext<RepositoryContext>(options =>
 {
     //whatever Db is used here wtih Efcore
     options.UseCosmos("https://localhost:8081", 
-        "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
+        "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
         "ConduitDb");
 });
 builder.Services.AddAuthentication(opt =>
@@ -37,9 +37,9 @@ builder.Services.AddAuthentication(opt =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = "",
-        ValidAudience = "",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("keygoeshereforwhenineedit propertl"))
+        ValidIssuer = "your-issuer",
+        ValidAudience = "your-audience",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("SECRET")))
     };
 })
     ;

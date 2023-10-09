@@ -15,7 +15,7 @@ namespace Repository
             //=> new ObjectModelRepository(context));
 
             userRepository = new Lazy<IUserRepository> (() =>
-            new UserRepository(context);
+            new UserRepository(context));
         }
         //public IObejctModelRepository ObejectRepository => _objectModelRepository.Value;
 

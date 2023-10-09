@@ -1,6 +1,4 @@
-﻿
-
-using Entities.Models;
+﻿using Entities.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Repository
@@ -9,7 +7,7 @@ namespace Repository
     {
         public RepositoryContext(DbContextOptions options) : base(options)
         {
-
+            Database.EnsureCreated();
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

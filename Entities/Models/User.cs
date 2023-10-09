@@ -2,10 +2,10 @@
 
 public record User
 {
-    public string Id { get; set; }
+    public Guid Id { get; set; }
     public string UserName { get; set; }
     public string Email { get; set; }
-    public byte[] PasswordHash { get; set; }
+    public string PasswordHash { get; set; }
     public string Bio { get; set; }
     //image url?
     public string Image { get; set; }

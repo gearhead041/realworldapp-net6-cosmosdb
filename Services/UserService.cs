@@ -8,14 +8,13 @@ using System.Text;
 using XSystem.Security.Cryptography;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
-using XAct;
 
 namespace Services;
 
 internal class UserService : IUserService
 {
-    private IRepositoryManager repositoryManager;
-    private IMapper mapper;
+    private readonly IRepositoryManager repositoryManager;
+    private readonly IMapper mapper;
 
     public UserService(IRepositoryManager repositoryManager, IMapper mapper)
     {
@@ -23,23 +22,13 @@ internal class UserService : IUserService
         this.mapper = mapper;
     }
 
-    private bool Verify(string password, byte[] userFromDbHash)
+    private static bool Verify(string password, string userFromDbHash)
     {
         byte[] passwordBytes = Encoding.ASCII.GetBytes(password);
-        byte[] loginHash = new MD5CryptoServiceProvider().ComputeHash(passwordBytes);
+        string loginHash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(passwordBytes));
         bool verified = false;
-        if (loginHash.Length == userFromDbHash.Length)
-        {
-            int i = 0;
-            while ((i < loginHash.Length) && (loginHash[i] == userFromDbHash[i]))
-            {
-                i += 1;
-            }
-            if (i == loginHash.Length)
-            {
-                verified = true;
-            }
-        }
+        if (loginHash == userFromDbHash)
+            verified = true;
         return verified;
     }
 
@@ -49,20 +38,20 @@ internal class UserService : IUserService
         var user = await repositoryManager.UserRepository.GetUser(userForAuth.Email, false, null);
         if (user == null)
             return (false, null);
-        var result = Verify(userForAuth.Password, user.PasswordHash);
+        var result = Verify(userForAuth.Password.Trim(), user.PasswordHash);
         var userWithToken = mapper.Map<UserDto>(user);
-        userWithToken.Token = GenerateToken(userForAuth);
-        return (result, mapper.Map<UserDto>(user));
+        userWithToken.Token = GenerateToken(userForAuth.Email);
+        return (result, userWithToken);
     }
 
-    private string GenerateToken(UserForAuthDto user)
+    private static string GenerateToken(string email)
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Email, email),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your-secret-key"));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("SECRET")));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
@@ -83,9 +72,13 @@ internal class UserService : IUserService
         if (userInDb != null)
             return (false, null);
         var user = mapper.Map<User>(userCreate);
+        byte[] passwordBytes = Encoding.ASCII.GetBytes(userCreate.Password.Trim());
+        user.PasswordHash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(passwordBytes));
         repositoryManager.UserRepository.CreateUser(user);
         await repositoryManager.Save();
-        return (true, mapper.Map<UserDto>(user));
+        var userToReturn = mapper.Map<UserDto>(user);
+        userToReturn.Token = GenerateToken(userCreate.Email);
+        return (true, userToReturn);
     }
 
     public static string GetEmailFromToken(string jwtToken)
@@ -107,7 +100,7 @@ internal class UserService : IUserService
     public async Task<UserDto> GetUser(string token)
     {
         var email = GetEmailFromToken(token);
-        if (email.IsNull())
+        if (email == null)
             return null;
 
         var user = await repositoryManager.UserRepository.GetUser(email, false, null);
@@ -119,27 +112,46 @@ internal class UserService : IUserService
     public async Task<UserDto> UpdateUser(UserDto userUpdate)
     {
         var user = await repositoryManager.UserRepository.GetUser(userUpdate.Email, true, null);
-        if (user.IsNull())
+        if (user == null)
             return null;
         mapper.Map(userUpdate, user);
         await repositoryManager.Save();
         return userUpdate;
     }
 
-    public Task<ProfileDto> FollowUser(string userName, string userToFollow)
+    public async Task<ProfileDto> FollowUser(string userName, string userToFollow)
     {
-        throw new NotImplementedException();
+        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName,true, null);
+        var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToFollow, true, null);
+        if (userFromDb == null || userToFollowDb == null)
+            return null;
+        var _ = userFromDb.Following.Append(userToFollowDb);
+        await repositoryManager.Save();
+        var profile = mapper.Map<ProfileDto>(userToFollowDb);
+        profile.Following = true;
+        return profile;
     }
 
-    public Task<ProfileDto> GetProfile(string userName)
+    public async Task<ProfileDto> GetProfile(string userName)
     {
-        throw new NotImplementedException();
+        var user = await repositoryManager.UserRepository.GetUserByName(userName,false,null);
+        if (user == null)
+            return null;
+        return mapper.Map<ProfileDto>(user);
     }
 
 
-    public Task<ProfileDto> UnfollowUser(string userName, string userToFollow)
+    public async Task<ProfileDto> UnfollowUser(string userName, string userToUnFollow)
     {
-        throw new NotImplementedException();
+        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName, true, null);
+        var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToUnFollow, true, null);
+        if (userFromDb == null || userToFollowDb == null)
+            return null;
+        userFromDb.Following = userFromDb.Following.Where(u => u.UserName != userToUnFollow);
+        await repositoryManager.Save();
+        var profile = mapper.Map<ProfileDto>(userToFollowDb);
+        profile.Following = true;
+        return profile;
     }
 
 }
