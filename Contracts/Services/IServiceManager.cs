@@ -1,8 +1,8 @@
 ﻿
-namespace Contracts.Services
+namespace Contracts.Services;
+
+public interface IServiceManager
 {
-    public interface IServiceManager
-    {
-        //Model Service Interfaces Here
-    }
+    //Model Service Interfaces Here
+   IUserService UserService { get; }
 }
