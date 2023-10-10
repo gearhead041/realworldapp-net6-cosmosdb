@@ -12,5 +12,5 @@ public class Article
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public int FavouritesCount { get; set; }
-    public User Author { get; set; }
+    public Guid AuthorId { get; set; }
 }

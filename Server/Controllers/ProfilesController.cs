@@ -1,5 +1,6 @@
 ﻿using Contracts.Services;
 using Entities.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Server.Controllers;
@@ -26,6 +27,7 @@ public class ProfilesController : ControllerBase
         return Ok(new { profile });
     }
 
+    [Authorize]
     [HttpPost("{userName}/follow")]
     public async Task<ActionResult<ProfileDto>> FollowUser(string userName)
     {
@@ -40,6 +42,7 @@ public class ProfilesController : ControllerBase
         return Ok(new { profile });
     }
 
+    [Authorize]
     [HttpDelete("{userName}/unfollow")]
     public async Task<ActionResult<ProfileDto>> UnfollowUser(string userName)
     {
