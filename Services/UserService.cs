@@ -51,7 +51,8 @@ internal class UserService : IUserService
             new Claim(ClaimTypes.Email, email),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("SECRET")));
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("SECRET")!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
@@ -68,7 +69,11 @@ internal class UserService : IUserService
 
     public async Task<(bool, UserDto)> CreateUser(CreateUserDto userCreate)
     {
-        var userInDb = await repositoryManager.UserRepository.GetUser(userCreate.Email, false, null);
+        User userInDb;
+        userInDb = await repositoryManager.UserRepository.GetUser(userCreate.Email, false, null);
+        if (userInDb != null)
+            return (false, null);
+        userInDb = await repositoryManager.UserRepository.GetUserByName(userCreate.UserName, false, null);
         if (userInDb != null)
             return (false, null);
         var user = mapper.Map<User>(userCreate);
@@ -84,8 +89,7 @@ internal class UserService : IUserService
     public static string GetEmailFromToken(string jwtToken)
     {
         var handler = new JwtSecurityTokenHandler();
-        var token = handler.ReadJwtToken(jwtToken);
-
+        var token = new JwtSecurityToken(jwtToken);
         // Find the claim by type
         var claim = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email);
 
@@ -97,9 +101,9 @@ internal class UserService : IUserService
         return null;
     }
 
-    public async Task<UserDto> GetUser(string token)
+    public async Task<UserDto> GetUser(string jwtToken)
     {
-        var email = GetEmailFromToken(token);
+        var email = GetEmailFromToken(jwtToken);
         if (email == null)
             return null;
 
@@ -109,48 +113,73 @@ internal class UserService : IUserService
         return mapper.Map<UserDto>(user);
     }
 
-    public async Task<UserDto> UpdateUser(UserDto userUpdate)
+    public async Task<(bool, UserDto)> UpdateUser(UserDto userUpdate)
     {
         var user = await repositoryManager.UserRepository.GetUser(userUpdate.Email, true, null);
         if (user == null)
-            return null;
+            return (false, null);
+        var userCheck = await repositoryManager.UserRepository.GetUserByName(userUpdate.UserName, false, null);
+        if (userCheck != null)
+        {
+            if (userCheck.Id != user.Id)
+                return (false, null);
+        }
         mapper.Map(userUpdate, user);
         await repositoryManager.Save();
-        return userUpdate;
+        return (true, userUpdate);
     }
 
     public async Task<ProfileDto> FollowUser(string userName, string userToFollow)
     {
-        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName,true, null);
+        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName, true, null);
         var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToFollow, true, null);
         if (userFromDb == null || userToFollowDb == null)
-            return null;
-        var _ = userFromDb.Following.Append(userToFollowDb);
+            return null!;
+        userFromDb.FollowingIds = userFromDb.FollowingIds
+            .Append(userToFollowDb.Id.ToString()).ToArray();
         await repositoryManager.Save();
         var profile = mapper.Map<ProfileDto>(userToFollowDb);
         profile.Following = true;
         return profile;
     }
 
-    public async Task<ProfileDto> GetProfile(string userName)
+    public async Task<ProfileDto> GetProfile(string userName, string? token)
     {
-        var user = await repositoryManager.UserRepository.GetUserByName(userName,false,null);
+        var user = await repositoryManager.UserRepository.GetUserByName(userName, false, null);
         if (user == null)
             return null;
-        return mapper.Map<ProfileDto>(user);
+        var profile = mapper.Map<ProfileDto>(user);
+        if (token != null)
+        {
+            var email = GetEmailFromToken(token);
+            var requestUser = await repositoryManager.UserRepository.GetUser(email,false,null);
+            if(requestUser != null)
+            {
+                var following = requestUser.FollowingIds.FirstOrDefault( u => u == user.Id.ToString());
+                if (following != null)
+                    profile.Following = true;
+            }
+        }
+        else
+        {
+            profile.Following = false;
+        }
+
+        return profile;
     }
 
 
     public async Task<ProfileDto> UnfollowUser(string userName, string userToUnFollow)
     {
         var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName, true, null);
-        var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToUnFollow, true, null);
-        if (userFromDb == null || userToFollowDb == null)
-            return null;
-        userFromDb.Following = userFromDb.Following.Where(u => u.UserName != userToUnFollow);
+        var userToUnfollowDb = await repositoryManager.UserRepository.GetUserByName(userToUnFollow, true, null);
+        if (userFromDb == null || userToUnfollowDb == null)
+            return null!;
+        userFromDb.FollowingIds = userFromDb.FollowingIds
+            .Where(u => u != userToUnfollowDb.Id.ToString()).ToArray();
         await repositoryManager.Save();
-        var profile = mapper.Map<ProfileDto>(userToFollowDb);
-        profile.Following = true;
+        var profile = mapper.Map<ProfileDto>(userToUnfollowDb);
+        profile.Following = false;
         return profile;
     }
 

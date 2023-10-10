@@ -18,7 +18,9 @@ public class ProfilesController : ControllerBase
     [HttpGet("{userName}")]
     public async Task<ActionResult<ProfileDto>> GetProfile(string userName)
     {
-        var profile = await serviceManager.UserService.GetProfile(userName);
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        var profile = await serviceManager.UserService.GetProfile(userName,jwtToken);
         if (profile == null)
             return NotFound("User not found");
         return Ok(new { profile });
@@ -27,8 +29,9 @@ public class ProfilesController : ControllerBase
     [HttpPost("{userName}/follow")]
     public async Task<ActionResult<ProfileDto>> FollowUser(string userName)
     {
-        string token = HttpContext.Request.Headers["Authorization"];
-        var user = await serviceManager.UserService.GetUser(token);
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        var user = await serviceManager.UserService.GetUser(jwtToken);
         if (user == null)
             return Unauthorized();
         var profile = await serviceManager.UserService.FollowUser(user.UserName, userName);
@@ -40,8 +43,9 @@ public class ProfilesController : ControllerBase
     [HttpDelete("{userName}/unfollow")]
     public async Task<ActionResult<ProfileDto>> UnfollowUser(string userName)
     {
-        string token = HttpContext.Request.Headers["Authorization"];
-        var user = await serviceManager.UserService.GetUser(token);
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        var user = await serviceManager.UserService.GetUser(jwtToken);
         if (user == null)
             return Unauthorized();
         var profile = await serviceManager.UserService.UnfollowUser(user.UserName, userName);

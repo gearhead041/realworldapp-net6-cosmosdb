@@ -8,7 +8,9 @@ public class MappingProfiles : Profile
 {
     public MappingProfiles()
     {
-        CreateMap<ProfileDto, User>().ReverseMap();
+        CreateMap<User, ProfileDto>()
+            //.ReverseMap()
+            .ForMember(u => u.Following, opt => opt.Ignore());
         CreateMap<Article,ArticleDto>().ReverseMap();
         CreateMap<Comment, CommentDto>().ReverseMap();
         CreateMap<UserDto, User>().ReverseMap()

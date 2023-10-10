@@ -9,8 +9,8 @@ public record User
     public string Bio { get; set; }
     //image url?
     public string Image { get; set; }
-    public IEnumerable<User> Following { get; set; }
-    public IEnumerable<Comment> Comments { get; set; }
+    public string[] FollowingIds { get; set; } = Array.Empty<string>();
+    public IEnumerable<Comment> Comments { get; set; } = Enumerable.Empty<Comment>();
 }
 
 

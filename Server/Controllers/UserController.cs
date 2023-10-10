@@ -6,7 +6,7 @@ using Microsoft.Azure.Cosmos.Linq;
 
 namespace Server.Controllers;
 
-[Route("api/[controller]")]
+[Route("api")]
 [ApiController]
 public class UsersController : ControllerBase
 {
@@ -17,7 +17,7 @@ public class UsersController : ControllerBase
         this.serviceManager = serviceManager;
     }
 
-    [HttpPost("login")]
+    [HttpPost("users/login")]
     public async Task<ActionResult<UserDto>> Login([FromBody] UserForAuthDto userForAuth)
     {
 
@@ -30,33 +30,36 @@ public class UsersController : ControllerBase
 
     }
 
-    [HttpPost("register")]
+    [HttpPost("users/register")]
     public async Task<ActionResult<UserDto>> Register([FromBody] CreateUserDto createUserDto)
     {
          (bool result, UserDto userReturn) = await serviceManager.UserService.CreateUser(createUserDto);
         if (!result)
-            return BadRequest("Email exists already");
+            return BadRequest("Username or Email exists already");
         return Ok(new { user = userReturn });
     }
 
     [Authorize]
-    [HttpGet]
+    [HttpGet("user")]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
-        string token = HttpContext.Request.Headers["Authorization"];
-        var user = await serviceManager.UserService.GetUser(token);
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        var user = await serviceManager.UserService.GetUser(jwtToken);
         if (user == null)
             return NotFound(user);
         return Ok( new { user });
     }
 
     [Authorize]
-    [HttpPut]
+    [HttpPut("user")]
     public async Task<ActionResult<UserDto>> UpdateUser([FromBody] UserDto userUpdate)
     {
-        var user = await serviceManager.UserService.UpdateUser(userUpdate);
-        if (user.IsNull())
-            return BadRequest("User Not Found");
+        (bool result, UserDto user) = await serviceManager.UserService.UpdateUser(userUpdate);
+        if (!result)
+            return BadRequest("username taken");
+        if (user == null)
+            return BadRequest("user not found");
         return Ok(new { user });
     }
 }
