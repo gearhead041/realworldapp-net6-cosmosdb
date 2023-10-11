@@ -129,20 +129,6 @@ internal class UserService : IUserService
         return (true, userUpdate);
     }
 
-    public async Task<ProfileDto> FollowUser(string userName, string userToFollow)
-    {
-        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName, true, null);
-        var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToFollow, true, null);
-        if (userFromDb == null || userToFollowDb == null)
-            return null!;
-        userFromDb.FollowingIds = userFromDb.FollowingIds
-            .Append(userToFollowDb.Id.ToString()).ToArray();
-        await repositoryManager.Save();
-        var profile = mapper.Map<ProfileDto>(userToFollowDb);
-        profile.Following = true;
-        return profile;
-    }
-
     public async Task<ProfileDto> GetProfile(string userName, string? token)
     {
         var user = await repositoryManager.UserRepository.GetUserByName(userName, false, null);
@@ -152,10 +138,10 @@ internal class UserService : IUserService
         if (token != null)
         {
             var email = GetEmailFromToken(token);
-            var requestUser = await repositoryManager.UserRepository.GetUser(email,false,null);
-            if(requestUser != null)
+            var requestUser = await repositoryManager.UserRepository.GetUser(email, false, null);
+            if (requestUser != null)
             {
-                var following = requestUser.FollowingIds.FirstOrDefault( u => u == user.Id.ToString());
+                var following = requestUser.FollowingIds.FirstOrDefault(u => u == user.Id.ToString());
                 if (following != null)
                     profile.Following = true;
             }
@@ -168,6 +154,22 @@ internal class UserService : IUserService
         return profile;
     }
 
+    public async Task<ProfileDto> FollowUser(string userName, string userToFollow)
+    {
+        var userFromDb = await repositoryManager.UserRepository.GetUserByName(userName, true, null);
+        var userToFollowDb = await repositoryManager.UserRepository.GetUserByName(userToFollow, true, null);
+        if (userFromDb == null || userToFollowDb == null)
+            return null!;
+        if (!userFromDb.FollowingIds.Contains(userToFollowDb.Id.ToString()))
+        {
+            userFromDb.FollowingIds = userFromDb.FollowingIds
+                .Append(userToFollowDb.Id.ToString()).ToArray();
+            await repositoryManager.Save();
+        }
+        var profile = mapper.Map<ProfileDto>(userToFollowDb);
+        profile.Following = true;
+        return profile;
+    }
 
     public async Task<ProfileDto> UnfollowUser(string userName, string userToUnFollow)
     {
@@ -175,9 +177,12 @@ internal class UserService : IUserService
         var userToUnfollowDb = await repositoryManager.UserRepository.GetUserByName(userToUnFollow, true, null);
         if (userFromDb == null || userToUnfollowDb == null)
             return null!;
-        userFromDb.FollowingIds = userFromDb.FollowingIds
+        if (userFromDb.FollowingIds.Contains(userToUnfollowDb.Id.ToString()))
+        {
+            userFromDb.FollowingIds = userFromDb.FollowingIds
             .Where(u => u != userToUnfollowDb.Id.ToString()).ToArray();
-        await repositoryManager.Save();
+            await repositoryManager.Save();
+        }
         var profile = mapper.Map<ProfileDto>(userToUnfollowDb);
         profile.Following = false;
         return profile;

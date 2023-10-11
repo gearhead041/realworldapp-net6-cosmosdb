@@ -92,22 +92,12 @@ public class ArticleService : IArticleService
         return true;
     }
 
-    public async Task<ArticleDto> FavoriteArticle(string token, string slug)
-    {
-        var email = UserService.GetEmailFromToken(token);
-        var user = await repositoryManager.UserRepository.GetUser(email, true, null);
-        if (user == null)
-            return null;
-        user.FavouritedArticlesSlugs = user.FavouritedArticlesSlugs
-            .Append(slug).ToArray();
-        await repositoryManager.Save();
-        return await GetArticle(slug);
-    }
 
     public async Task<ArticleDto> GetArticle(string slug)
     {
         var article = await repositoryManager.ArticleRepository.GetArticle(slug, false, null);
-        return mapper.Map<ArticleDto>(article);
+        var articleToReturn = mapper.Map<ArticleDto>(article);
+        return articleToReturn;
     }
 
     public async Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, string? favorited,
@@ -156,14 +146,34 @@ public class ArticleService : IArticleService
         return articlesToReturn;
     }
 
+    public async Task<ArticleDto> FavoriteArticle(string token, string slug)
+    {
+        var email = UserService.GetEmailFromToken(token);
+        var user = await repositoryManager.UserRepository.GetUser(email, true, null);
+        if (user.FavouritedArticlesSlugs.Contains(slug))
+            return await GetArticle(slug);
+        var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
+        if (user == null || article == null)
+            return null;
+        article.FavouritesCount += 1;
+        user.FavouritedArticlesSlugs = user.FavouritedArticlesSlugs
+            .Append(slug).ToArray();
+        await repositoryManager.Save();
+        return await GetArticle(slug);
+    }
+
     public async Task<ArticleDto> UnfavoriteArticle(string token, string slug)
     {
         var email = UserService.GetEmailFromToken(token);
         var user = await repositoryManager.UserRepository.GetUser(email, true, null);
-        if (user == null)
+        if (!user.FavouritedArticlesSlugs.Contains(slug))
+            return await GetArticle(slug);
+        var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
+        if (user == null || article == null)
             return null;
         user.FavouritedArticlesSlugs = user.FavouritedArticlesSlugs
             .Where(s => s != slug).ToArray();
+        article.FavouritesCount -= 1;
         await repositoryManager.Save();
         return await GetArticle(slug);
     }
