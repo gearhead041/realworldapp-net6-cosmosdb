@@ -14,4 +14,5 @@ public interface IArticleService
     Task<bool> DeleteComment(string slug, Guid commentId);
     Task<ArticleDto> FavoriteArticle(string token, string slug);
     Task<ArticleDto> UnfavoriteArticle(string token, string slug);
+    Task<IEnumerable<string>> GetTags();
 }

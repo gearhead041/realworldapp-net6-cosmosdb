@@ -119,8 +119,8 @@ public class ArticleService : IArticleService
         var user = await repositoryManager.UserRepository.GetUser(email, false, null);
 
         if (favorited != null && token != null)
-        articles = articles.Where(a => user.FavouritedArticlesSlugs
-            .Contains(a.Slug));
+            articles = articles.Where(a => user.FavouritedArticlesSlugs
+                .Contains(a.Slug));
 
         var articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         foreach (var article in articlesToReturn)
@@ -176,5 +176,13 @@ public class ArticleService : IArticleService
         article.FavouritesCount -= 1;
         await repositoryManager.Save();
         return await GetArticle(slug);
+    }
+
+    public async Task<IEnumerable<string>> GetTags()
+    {
+        var articles = await repositoryManager.ArticleRepository.GetAllArticles(false, null);
+        var tags = articles.Select(a => a.TagList);
+        var tagsToReturn = tags.SelectMany(s => s).Distinct();
+        return tagsToReturn;
     }
 }
