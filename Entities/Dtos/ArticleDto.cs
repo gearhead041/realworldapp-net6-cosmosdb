@@ -11,7 +11,7 @@ public record ArticleDto
     public string CreatedAt { get; set; }
     public string UpdatedAt { get; set;}
     public bool Favorited { get; set; }
-    public int FavouritesCount { get; set; }
+    public int FavoritesCount { get; set; }
     public ProfileDto Author { get; set; }
 }
 
@@ -37,4 +37,10 @@ public record UpdateArticleDto
     public string? CreatedAt { get; set; }
     public string? UpdatedAt { get; set; }
 }
+
+public record UpdateArticleRequestDto
+{
+    public UpdateArticleDto Article { get; set; }
+ }
+
 

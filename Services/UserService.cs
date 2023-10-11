@@ -73,9 +73,10 @@ internal class UserService : IUserService
         userInDb = await repositoryManager.UserRepository.GetUser(userCreate.Email, false, null);
         if (userInDb != null)
             return (false, null);
-        userInDb = await repositoryManager.UserRepository.GetUserByName(userCreate.UserName, false, null);
+        userInDb = await repositoryManager.UserRepository.GetUserByName(userCreate.Username, false, null);
         if (userInDb != null)
             return (false, null);
+
         var user = mapper.Map<User>(userCreate);
         byte[] passwordBytes = Encoding.ASCII.GetBytes(userCreate.Password.Trim());
         user.PasswordHash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(passwordBytes));
@@ -113,20 +114,21 @@ internal class UserService : IUserService
         return mapper.Map<UserDto>(user);
     }
 
-    public async Task<(bool, UserDto)> UpdateUser(UserDto userUpdate)
+    public async Task<(bool, UserDto)> UpdateUser(UserUpdate userUpdate, string token)
     {
-        var user = await repositoryManager.UserRepository.GetUser(userUpdate.Email, true, null);
+        var email = GetEmailFromToken(token);
+        var user = await repositoryManager.UserRepository.GetUser(email, true, null);
         if (user == null)
             return (false, null);
-        var userCheck = await repositoryManager.UserRepository.GetUserByName(userUpdate.UserName, false, null);
-        if (userCheck != null)
+        var userCheckName = await repositoryManager.UserRepository.GetUserByName(userUpdate.Username, false, null);
+        if (userCheckName != null && userCheckName.Id != user.Id)
         {
-            if (userCheck.Id != user.Id)
-                return (false, null);
+            return (false, null);
         }
         mapper.Map(userUpdate, user);
         await repositoryManager.Save();
-        return (true, userUpdate);
+        var userToReturn = mapper.Map<UserDto>(user);
+        return (true, userToReturn);
     }
 
     public async Task<ProfileDto> GetProfile(string userName, string? token)

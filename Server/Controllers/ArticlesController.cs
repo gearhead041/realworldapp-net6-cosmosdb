@@ -20,13 +20,10 @@ public class ArticlesController : ControllerBase
     public async Task<ActionResult<IEnumerable<ArticleDto>>> GetArticles(string? tags, string? author,
         string? favorited, int limit = 20, int offset = 0)
     {
-        string jwtToken = HttpContext.Request.Headers["Authorization"];
-        if (jwtToken != null)
-            jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var articles = await serviceManager.ArticleService
-            .GetArticles(tags, author, favorited, limit, offset, jwtToken);
+            .GetArticles(tags, author, favorited, limit, offset);
 
-        return Ok(new { articles, articlesCount = articles.Count() });
+        return Ok(new { articles, articlesCount = articles?.Count() });
     }
 
     [Authorize]
@@ -36,7 +33,7 @@ public class ArticlesController : ControllerBase
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var articles = await serviceManager.ArticleService.GetUserFeed(jwtToken,limit,offset);
-        return Ok(new { articles });
+        return Ok(new { articles, articlesCount = articles.Count() });
     }
 
     [HttpGet("{slug}")]
@@ -44,7 +41,7 @@ public class ArticlesController : ControllerBase
     {
         var article = await serviceManager.ArticleService.GetArticle(slug);
         if (article == null)
-            return NotFound("article not found");
+            return NotFound();
         return Ok(new { article });
     }
 
@@ -67,13 +64,22 @@ public class ArticlesController : ControllerBase
     {
         var result = await serviceManager.ArticleService.DeleteArticle(slug);
         if (result == false)
-            return NotFound("article not found");
+            return NotFound();
         return NoContent();
+    }
+
+    [HttpGet("{slug}/comments")]
+    public async Task<ActionResult<IEnumerable<CommentDto>>> GetComments(string slug)
+    {
+        var comments = await serviceManager.ArticleService.GetCommentsForArticle(slug);
+        if (comments == null)
+            return BadRequest("Article not found");
+        return Ok(new { comments });
     }
 
     [Authorize]
     [HttpPost("{slug}/comments")]
-    public async Task<ActionResult<CommentDto>> AddComment([FromBody] CommentDataDto commentToCreate, string slug)
+    public async Task<ActionResult<CommentDto>> CreateComment([FromBody] CommentDataDto commentToCreate, string slug)
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
@@ -90,7 +96,7 @@ public class ArticlesController : ControllerBase
 
         var result = await serviceManager.ArticleService.DeleteComment(slug, commentId);
         if (!result)
-            return BadRequest("article or comment not found");
+            return BadRequest("comment not found");
         return NoContent();
     }
 
@@ -112,9 +118,22 @@ public class ArticlesController : ControllerBase
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        jwtToken = jwtToken.Replace("Token ", string.Empty);
         var article = await serviceManager.ArticleService.UnfavoriteArticle(jwtToken, slug);
         if (article == null)
             return BadRequest("user not found");
         return Ok(new { article });
     }
+
+    [Authorize]
+    [HttpPut("{slug}")]
+    public async Task<ActionResult<ArticleDto>> UpdateArticle(string slug,[FromBody] UpdateArticleRequestDto updateArticle)
+    {
+        var article = await serviceManager.ArticleService.UpdateArticle(slug, updateArticle.Article);
+        if(article == null)
+            return NotFound();
+        return Ok(new { article });
+    }
+
+
 }

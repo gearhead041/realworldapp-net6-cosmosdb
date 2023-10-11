@@ -9,8 +9,8 @@ namespace Services;
 
 public class ArticleService : IArticleService
 {
-    private IRepositoryManager repositoryManager;
-    private IMapper mapper;
+    private readonly IRepositoryManager repositoryManager;
+    private readonly IMapper mapper;
 
     public ArticleService(IRepositoryManager repositoryManager, IMapper mapper)
     {
@@ -18,7 +18,7 @@ public class ArticleService : IArticleService
         this.mapper = mapper;
     }
 
-    public async Task<CommentDto> AddComment(string token, string slug, CommentDto commentToCreate)
+    public async Task<CommentDto> AddComment(string token, string slug, CommentCreateDto commentToCreate)
     {
         var email = UserService.GetEmailFromToken(token);
         var user = await repositoryManager.UserRepository.GetUser(email, false, null);
@@ -31,14 +31,15 @@ public class ArticleService : IArticleService
 
         var comment = mapper.Map<Comment>(commentToCreate);
         comment.AuthorId = user.Id;
-        comment.CreatedAt = DateTime.UtcNow;
+        comment.CreatedAt = DateTime.Now.ToUniversalTime();
+        comment.UpdatedAt = DateTime.Now.ToUniversalTime();
         repositoryManager.CommentRepository.CreateComment(comment);
         await repositoryManager.Save();
 
         article.CommentIds = article.CommentIds.Append(comment.Id.ToString()).ToArray();
-        mapper.Map(comment, commentToCreate);
-        commentToCreate.Author = mapper.Map<ProfileDto>(user);
-        return commentToCreate;
+        var commentToReturn = mapper.Map<CommentDto>(comment);
+        commentToReturn.Author = mapper.Map<ProfileDto>(user);
+        return commentToReturn;
     }
 
     public async Task<(bool, ArticleDto)> CreateArticle(string token, CreateArticleDto createArticle)
@@ -59,12 +60,16 @@ public class ArticleService : IArticleService
             i++;
         }
         article.Slug = slug;
-        article.CreatedAt = DateTime.UtcNow;
+        article.CreatedAt = DateTime.Now.ToUniversalTime();
+        article.UpdatedAt = DateTime.Now.ToUniversalTime();
         repositoryManager.ArticleRepository.CreateArticle(article);
         await repositoryManager.Save();
         var returnArticle = mapper.Map<ArticleDto>(article);
+        returnArticle.FavoritesCount = 0;
         return (true, returnArticle);
     }
+
+
 
     public async Task<bool> DeleteArticle(string slug)
     {
@@ -78,11 +83,6 @@ public class ArticleService : IArticleService
 
     public async Task<bool> DeleteComment(string slug, Guid commentId)
     {
-        var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
-        if (article == null)
-            return false;
-        article.CommentIds = article.CommentIds.Where(id => id != commentId.ToString())
-            .ToArray();
         var comment = await repositoryManager.CommentRepository.GetComment(commentId, true, null);
         if (comment == null)
             return false;
@@ -101,7 +101,7 @@ public class ArticleService : IArticleService
     }
 
     public async Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, string? favorited,
-        int limit, int offset, string? token)
+        int limit, int offset)
     {
         IEnumerable<Article> articles;
         articles = await repositoryManager.ArticleRepository.GetAllArticles(false, null);
@@ -115,19 +115,20 @@ public class ArticleService : IArticleService
         {
             articles = articles.Where(a => a.Author.UserName == author);
         }
-        var articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
-        if (favorited != null && token != null)
+        IEnumerable<ArticleDto> articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
+        if (favorited != null)
         {
-            var email = UserService.GetEmailFromToken(token);
-            var user = await repositoryManager.UserRepository.GetUser(email, false, null);
-
-            articles = articles.Where(a => user.FavouritedArticlesSlugs
-                .Contains(a.Slug));
-
+            var user = await repositoryManager.UserRepository.GetUserByName(favorited, false, null);
+            if (user == null)
+                articles = Array.Empty<Article>();
+            else
+                articles = articles.Where(a => user.FavouritedArticlesSlugs
+                    .Contains(a.Slug)).ToList();
             foreach (var article in articlesToReturn)
             {
-                article.Favorited = user.FavouritedArticlesSlugs.Contains(article.Slug);
+                article.Favorited = true;
             };
+            articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         }
         return articlesToReturn;
     }
@@ -157,11 +158,13 @@ public class ArticleService : IArticleService
         var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
         if (user == null || article == null)
             return null;
-        article.FavouritesCount += 1;
+        article.FavoritesCount += 1;
         user.FavouritedArticlesSlugs = user.FavouritedArticlesSlugs
             .Append(slug).ToArray();
         await repositoryManager.Save();
-        return await GetArticle(slug);
+        var articleToReturn = await GetArticle(slug);
+        articleToReturn.Favorited = true;
+        return articleToReturn;
     }
 
     public async Task<ArticleDto> UnfavoriteArticle(string token, string slug)
@@ -175,7 +178,7 @@ public class ArticleService : IArticleService
             return null;
         user.FavouritedArticlesSlugs = user.FavouritedArticlesSlugs
             .Where(s => s != slug).ToArray();
-        article.FavouritesCount -= 1;
+        article.FavoritesCount -= 1;
         await repositoryManager.Save();
         return await GetArticle(slug);
     }
@@ -186,5 +189,36 @@ public class ArticleService : IArticleService
         var tags = articles.Select(a => a.TagList);
         var tagsToReturn = tags.SelectMany(s => s).Distinct();
         return tagsToReturn;
+    }
+
+    public async Task<ArticleDto> UpdateArticle(string slug, UpdateArticleDto articleDto)
+    {
+        var articles = await repositoryManager.ArticleRepository.GetAllArticles(true, null);
+        var article = articles.Where(a => a.Slug == slug).FirstOrDefault();
+        if (article == null)
+            return null;
+        mapper.Map(articleDto, article);
+        var newSlug = article.Title.Replace(" ", "-");
+        int i = 0;
+        while (articles.Select(a => a.Slug).Contains(article.Title))
+        {
+            newSlug += $"-{i}";
+            i++;
+        }
+        article.UpdatedAt = DateTime.Now.ToUniversalTime();
+        await repositoryManager.Save();
+        return mapper.Map<ArticleDto>(article);
+
+    }
+
+    public async Task<IEnumerable<CommentDto>> GetCommentsForArticle(string slug)
+    {
+        var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
+        if (article == null)
+            return null;
+        var comments = await repositoryManager.CommentRepository.GetAllComments(false,null);
+        comments = comments.Where(c => article.CommentIds.Contains(c.Id.ToString()));
+        var commentsToReturn = mapper.Map<IEnumerable<CommentDto>>(comments);
+        return commentsToReturn;
     }
 }

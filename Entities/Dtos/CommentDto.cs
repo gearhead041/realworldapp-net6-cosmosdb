@@ -10,7 +10,12 @@ public record CommentDto
     public ProfileDto Author { get; set; }
 }
 
+public record CommentCreateDto
+{
+    public string Body { get; set; }
+}
+
 public record CommentDataDto
 {
-    public CommentDto Comment { get; set; }
+    public CommentCreateDto Comment { get; set; }
 }

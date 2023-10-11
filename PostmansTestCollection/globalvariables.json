@@ -1,3 +1,4 @@
 {
   "apiurl":"https://localhost:7099"
-}
+}newman run Conduit.postman_collection.json 
+--env-var APIURL=http://localhost:7099/api --env-var EMAIL=example@user.com --env-var USERNAME=johndoe --env-var PASSWORD=rightone

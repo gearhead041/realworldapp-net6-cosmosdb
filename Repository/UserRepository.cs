@@ -24,7 +24,7 @@ public class UserRepository: RepositoryBase<User>, IUserRepository
         => await FindByCondition(u => u.Email == email, trackchanges, include).SingleOrDefaultAsync();
 
     public async Task<User> GetUserByName(string name, bool trackchanges, string? include)
-        => await FindByCondition(u => u.UserName == name, trackchanges, null).SingleOrDefaultAsync();
+        => await FindByCondition(u => u.Username == name, trackchanges, null).SingleOrDefaultAsync();
     public void UpdateUser(User user)
         => Update(user);
 }

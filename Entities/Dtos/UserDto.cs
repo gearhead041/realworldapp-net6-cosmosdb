@@ -5,7 +5,7 @@ namespace Entities.Dtos;
 
 public record UserDto
 {
-    public string UserName { get; set; }
+    public string Username { get; set; }
     [DataType(DataType.EmailAddress, ErrorMessage = "Must be a valid Email address")]
     public string Email { get; set; }
     public string Token { get; set; }
@@ -13,9 +13,20 @@ public record UserDto
     public string? Image { get; set; }
 }
 
+public record UserUpdate
+{
+    public string? Username { get; set; }
+    [DataType(DataType.EmailAddress, ErrorMessage = "Must be a valid Email address")]
+    public string? Email { get; set; }
+    public string? Token { get; set; }
+    public string? Bio { get; set; }
+    public string? Image { get; set; }
+}
+
+
 public record UserUpdateDto
 {
-    public UserDto User { get; set; }
+    public UserUpdate User { get; set; }
 }
 
 public record UserForAuthDto
@@ -27,14 +38,14 @@ public record UserForAuthDto
 
 public record UserForAuthRequestDto
 {
-    public UserForAuthDto user {  get; set; }
+    public UserForAuthDto User {  get; set; }
 }
 
 
 
 public record CreateUserDto
 {
-    public string UserName { get; set; }
+    public string Username { get; set; }
     [DataType(DataType.EmailAddress, ErrorMessage = "Must be a valid Email address")]
     public string Email { get; set; }
     public string Password { get; set; }
@@ -42,5 +53,5 @@ public record CreateUserDto
 
 public record CreateUserRequestDto
 {
-    public CreateUserDto user { get; set; }
+    public CreateUserDto User { get; set; }
 }

@@ -11,7 +11,7 @@ public class Article
     public string[] TagList { get; set; } = Array.Empty<string>();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public int FavouritesCount { get; set; }
+    public int FavoritesCount { get; set; }
     public Author Author { get; set; }
     public string[] CommentIds { get; set; } = Array.Empty<string>();
 }
