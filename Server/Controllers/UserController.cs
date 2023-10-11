@@ -18,10 +18,10 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("users/login")]
-    public async Task<ActionResult<UserDto>> Login([FromBody] UserForAuthDto userForAuth)
+    public async Task<ActionResult<UserDto>> Login([FromBody] UserForAuthRequestDto userForAuth)
     {
 
-        (bool result, UserDto userReturn) = await serviceManager.UserService.AuthenticateUser(userForAuth);
+        (bool result, UserDto userReturn) = await serviceManager.UserService.AuthenticateUser(userForAuth.user);
         if (result == false)
             return Unauthorized("Wrong password");
         if (userReturn == null)
@@ -30,10 +30,10 @@ public class UsersController : ControllerBase
 
     }
 
-    [HttpPost("users/register")]
-    public async Task<ActionResult<UserDto>> Register([FromBody] CreateUserDto createUserDto)
+    [HttpPost("users")]
+    public async Task<ActionResult<UserDto>> Register([FromBody] CreateUserRequestDto createUserDto)
     {
-         (bool result, UserDto userReturn) = await serviceManager.UserService.CreateUser(createUserDto);
+         (bool result, UserDto userReturn) = await serviceManager.UserService.CreateUser(createUserDto.user);
         if (!result)
             return BadRequest("Username or Email exists already");
         return Ok(new { user = userReturn });
@@ -53,9 +53,9 @@ public class UsersController : ControllerBase
 
     [Authorize]
     [HttpPut("user")]
-    public async Task<ActionResult<UserDto>> UpdateUser([FromBody] UserDto userUpdate)
+    public async Task<ActionResult<UserDto>> UpdateUser([FromBody] UserUpdateDto userUpdate)
     {
-        (bool result, UserDto user) = await serviceManager.UserService.UpdateUser(userUpdate);
+        (bool result, UserDto user) = await serviceManager.UserService.UpdateUser(userUpdate.User);
         if (!result)
             return BadRequest("username taken");
         if (user == null)

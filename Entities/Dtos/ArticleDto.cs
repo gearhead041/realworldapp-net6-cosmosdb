@@ -23,6 +23,11 @@ public record CreateArticleDto
     public string[]? TagList { get; set; }
 }
 
+public record CreateArticleRequestDto
+{
+    public CreateArticleDto Article { get; set; }
+}
+
 public record UpdateArticleDto
 {
     public string? Title { get; set; }

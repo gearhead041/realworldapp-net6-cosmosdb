@@ -35,7 +35,7 @@ public class ArticlesController : ControllerBase
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
-        var articles = await serviceManager.ArticleService.GetUserFeed(jwtToken);
+        var articles = await serviceManager.ArticleService.GetUserFeed(jwtToken,limit,offset);
         return Ok(new { articles });
     }
 
@@ -50,12 +50,12 @@ public class ArticlesController : ControllerBase
 
     [Authorize]
     [HttpPost]
-    public async Task<ActionResult<ArticleDto>> CreateArticle([FromBody] CreateArticleDto articleToCreate)
+    public async Task<ActionResult<ArticleDto>> CreateArticle([FromBody] CreateArticleRequestDto articleToCreate)
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         (bool result, ArticleDto article) = await serviceManager.ArticleService
-            .CreateArticle(jwtToken, articleToCreate);
+            .CreateArticle(jwtToken, articleToCreate.Article);
         if (!result)
             return BadRequest("user not found");
         return Ok(new { article });
@@ -73,11 +73,11 @@ public class ArticlesController : ControllerBase
 
     [Authorize]
     [HttpPost("{slug}/comments")]
-    public async Task<ActionResult<CommentDto>> AddComment([FromBody] CommentDto commentToCreate, string slug)
+    public async Task<ActionResult<CommentDto>> AddComment([FromBody] CommentDataDto commentToCreate, string slug)
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
-        var comment = await serviceManager.ArticleService.AddComment(jwtToken, slug, commentToCreate);
+        var comment = await serviceManager.ArticleService.AddComment(jwtToken, slug, commentToCreate.Comment);
         if (comment == null)
             return BadRequest("user or article not found");
         return Ok(new { comment });

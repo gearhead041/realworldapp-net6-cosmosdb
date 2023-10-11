@@ -6,8 +6,6 @@ namespace Repository;
 
 public class ArticleRepository : RepositoryBase<Article>, IArticleRepository
 {
-    private RepositoryContext context;
-
     public ArticleRepository(RepositoryContext context) : base(context)
     {
     }

@@ -101,7 +101,7 @@ public class ArticleService : IArticleService
     }
 
     public async Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, string? favorited,
-        int limit, int offset, string token)
+        int limit, int offset, string? token)
     {
         IEnumerable<Article> articles;
         articles = await repositoryManager.ArticleRepository.GetAllArticles(false, null);
@@ -115,29 +115,31 @@ public class ArticleService : IArticleService
         {
             articles = articles.Where(a => a.Author.UserName == author);
         }
-        var email = UserService.GetEmailFromToken(token);
-        var user = await repositoryManager.UserRepository.GetUser(email, false, null);
-
+        var articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         if (favorited != null && token != null)
+        {
+            var email = UserService.GetEmailFromToken(token);
+            var user = await repositoryManager.UserRepository.GetUser(email, false, null);
+
             articles = articles.Where(a => user.FavouritedArticlesSlugs
                 .Contains(a.Slug));
 
-        var articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
-        foreach (var article in articlesToReturn)
-        {
-            article.Favorited = user.FavouritedArticlesSlugs.Contains(article.Slug);
-        };
+            foreach (var article in articlesToReturn)
+            {
+                article.Favorited = user.FavouritedArticlesSlugs.Contains(article.Slug);
+            };
+        }
         return articlesToReturn;
     }
 
-    public async Task<IEnumerable<ArticleDto>> GetUserFeed(string token)
+    public async Task<IEnumerable<ArticleDto>> GetUserFeed(string token, int limit, int offset)
     {
         var email = UserService.GetEmailFromToken(token);
         var user = await repositoryManager.UserRepository.GetUser(email, false, null);
         IEnumerable<Article> articles;
         articles = await repositoryManager.ArticleRepository.GetAllArticles(false, null);
         articles = articles.Where(a => user.FollowingIds
-            .Contains(a.Author.Id.ToString()));
+            .Contains(a.Author.Id.ToString())).Skip(offset).Take(limit);
         var articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         foreach (var article in articlesToReturn)
         {

@@ -6,8 +6,6 @@ namespace Repository;
 
 public class CommentRepository : RepositoryBase<Comment>, ICommentRepository
 {
-    private RepositoryContext context;
-
     public CommentRepository(RepositoryContext context) : base(context)
     {
         
