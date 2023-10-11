@@ -49,7 +49,16 @@ public class ArticleService : IArticleService
         if (user == null)
             return (false, null);
         var article = mapper.Map<Article>(createArticle);
-        article.Author = mapper.Map<Author>(user);
+        repositoryManager.ArticleRepository.CreateArticle(article);
+        article.Author = new Author()
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Bio = user.Bio,
+            Image = user.Image
+        };
+
+
         string slug = createArticle.Title.Replace(" ", "-");
         var articles = await repositoryManager.ArticleRepository.GetAllArticles(false, null);
         var articleSlugs = articles.Select(a => a.Slug);
@@ -60,9 +69,9 @@ public class ArticleService : IArticleService
             i++;
         }
         article.Slug = slug;
+
         article.CreatedAt = DateTime.Now.ToUniversalTime();
         article.UpdatedAt = DateTime.Now.ToUniversalTime();
-        repositoryManager.ArticleRepository.CreateArticle(article);
         await repositoryManager.Save();
         var returnArticle = mapper.Map<ArticleDto>(article);
         returnArticle.FavoritesCount = 0;
@@ -100,7 +109,7 @@ public class ArticleService : IArticleService
         return articleToReturn;
     }
 
-    public async Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, string? favorited,
+    public async Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, string? favorited, string? token,
         int limit, int offset)
     {
         IEnumerable<Article> articles;
@@ -113,22 +122,31 @@ public class ArticleService : IArticleService
             articles = articles.Where(a => a.TagList.Contains(tag));
         if (author != null)
         {
-            articles = articles.Where(a => a.Author.UserName == author);
+            articles = articles.Where(a => a.Author.Username == author);
         }
         IEnumerable<ArticleDto> articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         if (favorited != null)
         {
             var user = await repositoryManager.UserRepository.GetUserByName(favorited, false, null);
             if (user == null)
+            {
                 articles = Array.Empty<Article>();
+            }
             else
+            {
                 articles = articles.Where(a => user.FavouritedArticlesSlugs
                     .Contains(a.Slug)).ToList();
+            }
+            articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
+        }
+        if (token != null)
+        {
+            var email = UserService.GetEmailFromToken(token);
+            var userRequesting = await repositoryManager.UserRepository.GetUser(email, false, null);
             foreach (var article in articlesToReturn)
             {
-                article.Favorited = true;
+                article.Favorited = userRequesting.FavouritedArticlesSlugs.Contains(article.Slug);
             };
-            articlesToReturn = mapper.Map<IEnumerable<ArticleDto>>(articles);
         }
         return articlesToReturn;
     }
@@ -154,7 +172,11 @@ public class ArticleService : IArticleService
         var email = UserService.GetEmailFromToken(token);
         var user = await repositoryManager.UserRepository.GetUser(email, true, null);
         if (user.FavouritedArticlesSlugs.Contains(slug))
-            return await GetArticle(slug);
+        {
+            var articleQuickReturn = await GetArticle(slug);
+            articleQuickReturn.Favorited = true;
+            return articleQuickReturn;
+        }
         var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
         if (user == null || article == null)
             return null;
@@ -216,7 +238,7 @@ public class ArticleService : IArticleService
         var article = await repositoryManager.ArticleRepository.GetArticle(slug, true, null);
         if (article == null)
             return null;
-        var comments = await repositoryManager.CommentRepository.GetAllComments(false,null);
+        var comments = await repositoryManager.CommentRepository.GetAllComments(false, null);
         comments = comments.Where(c => article.CommentIds.Contains(c.Id.ToString()));
         var commentsToReturn = mapper.Map<IEnumerable<CommentDto>>(comments);
         return commentsToReturn;

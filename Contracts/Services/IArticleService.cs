@@ -5,7 +5,7 @@ namespace Contracts.Services;
 public interface IArticleService
 {
     Task<IEnumerable<ArticleDto>> GetArticles(string? tag, string? author, 
-        string? favorited, int limit, int offset);
+        string? favorited, string? token, int limit, int offset);
     Task<IEnumerable<ArticleDto>> GetUserFeed(string token, int limit, int offset);
     Task<ArticleDto> GetArticle(string slug);
     Task<(bool,ArticleDto)> CreateArticle(string token, CreateArticleDto createArticle);

@@ -26,7 +26,7 @@ public class MappingProfiles : Profile
             .ForMember(u => u.Token, opt => opt.Ignore());
         CreateMap<CreateUserDto, User>().ReverseMap();
         CreateMap<UserUpdate, User>().ReverseMap();
-        CreateMap<Author, User>().ReverseMap();
+        CreateMap<User, Author>().ReverseMap();
         CreateMap<Author, ProfileDto>().ReverseMap();
     }
 }

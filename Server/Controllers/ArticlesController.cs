@@ -20,8 +20,11 @@ public class ArticlesController : ControllerBase
     public async Task<ActionResult<IEnumerable<ArticleDto>>> GetArticles(string? tags, string? author,
         string? favorited, int limit = 20, int offset = 0)
     {
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        if(jwtToken != null)
+            jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var articles = await serviceManager.ArticleService
-            .GetArticles(tags, author, favorited, limit, offset);
+            .GetArticles(tags, author, favorited, jwtToken, limit, offset);
 
         return Ok(new { articles, articlesCount = articles?.Count() });
     }

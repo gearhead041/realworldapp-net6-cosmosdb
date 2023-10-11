@@ -435,6 +435,7 @@
                   "    tests['articlesCount is an integer'] = Number.isInteger(responseJSON.articlesCount);",
                   "",
                   "    if(responseJSON.articles.length){",
+                  "console.log(responseJSON.articles)",
                   "        var article = responseJSON.articles[0];",
                   "",
                   "        tests['Article has \"title\" property'] = article.hasOwnProperty('title');",
