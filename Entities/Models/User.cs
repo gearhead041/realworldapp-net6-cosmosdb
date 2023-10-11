@@ -10,6 +10,7 @@ public record User
     //image url?
     public string Image { get; set; }
     public string[] FollowingIds { get; set; } = Array.Empty<string>();
+    public string[] FavouritedArticlesSlugs { get; set; } = Array.Empty<string>();
     public IEnumerable<Comment> Comments { get; set; } = Enumerable.Empty<Comment>();
 }
 

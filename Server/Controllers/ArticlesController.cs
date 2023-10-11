@@ -18,9 +18,15 @@ public class ArticlesController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ArticleDto>>> GetArticles(string? tags, string? author,
-        string? favorited, int limit = 0, int offset = 0)
+        string? favorited, int limit = 20, int offset = 0)
     {
-        var articles = await serviceManager.ArticleService.GetArticles(tags, author, favorited, limit, offset);
+        string jwtToken = HttpContext.Request.Headers["Authorization"];
+        if (jwtToken != null)
+            jwtToken = jwtToken.Replace("Bearer ", string.Empty);
+        var articles = await serviceManager.ArticleService
+            .GetArticles(tags, author, favorited, limit, offset, jwtToken);
+
+        return Ok(new { articles, articlesCount = articles.Count() });
     }
 
     [Authorize]
@@ -30,12 +36,16 @@ public class ArticlesController : ControllerBase
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var articles = await serviceManager.ArticleService.GetUserFeed(jwtToken);
+        return Ok(new { articles });
     }
 
     [HttpGet("{slug}")]
     public async Task<ActionResult<ArticleDto>> GetArticle(string slug)
     {
         var article = await serviceManager.ArticleService.GetArticle(slug);
+        if (article == null)
+            return NotFound("article not found");
+        return Ok(new { article });
     }
 
     [Authorize]
@@ -44,14 +54,20 @@ public class ArticlesController : ControllerBase
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
-        var article = await serviceManager.ArticleService.CreateArticle(jwtToken, articleToCreate);
+        (bool result, ArticleDto article) = await serviceManager.ArticleService
+            .CreateArticle(jwtToken, articleToCreate);
+        if (!result)
+            return BadRequest("user not found");
+        return Ok(new { article });
     }
 
     [Authorize]
     [HttpDelete("{slug}")]
     public async Task<ActionResult> DeleteArticle(string slug)
     {
-        await serviceManager.ArticleService.DeleteArticle(slug);
+        var result = await serviceManager.ArticleService.DeleteArticle(slug);
+        if (result == false)
+            return NotFound("article not found");
         return NoContent();
     }
 
@@ -61,18 +77,23 @@ public class ArticlesController : ControllerBase
     {
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
-        var comment = await serviceManager.ArticleService.AddComment(jwtToken, slug, commentToCreate)
+        var comment = await serviceManager.ArticleService.AddComment(jwtToken, slug, commentToCreate);
+        if (comment == null)
+            return BadRequest("user or article not found");
+        return Ok(new { comment });
     }
 
     [Authorize]
     [HttpDelete("{slug}/comments/{commentId}")]
     public async Task<ActionResult> DeleteComment(string slug, Guid commentId)
     {
-        await serviceManager.ArticleService.DeleteComment(slug, commentId);
+
+        var result = await serviceManager.ArticleService.DeleteComment(slug, commentId);
+        if (!result)
+            return BadRequest("article or comment not found");
         return NoContent();
     }
 
-    //HACK should create prop for liked articles on user
     [Authorize]
     [HttpPost("{slug}/favorite")]
     public async Task<ActionResult<ArticleDto>> FavoriteArticle(string slug)
@@ -80,6 +101,9 @@ public class ArticlesController : ControllerBase
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var article = await serviceManager.ArticleService.FavoriteArticle(jwtToken, slug);
+        if (article == null)
+            return BadRequest("user not found");
+        return Ok(new { article });
     }
 
     [Authorize]
@@ -89,5 +113,8 @@ public class ArticlesController : ControllerBase
         string jwtToken = HttpContext.Request.Headers["Authorization"];
         jwtToken = jwtToken.Replace("Bearer ", string.Empty);
         var article = await serviceManager.ArticleService.UnfavoriteArticle(jwtToken, slug);
+        if (article == null)
+            return BadRequest("user not found");
+        return Ok(new { article });
     }
 }
